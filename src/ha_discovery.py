@@ -11,7 +11,7 @@ SENSOR_METADATA = {
     "wind_speed_current": {"name": "Wind Speed", "unit": "mph", "icon": "mdi:weather-windy"},
     "wind_direction_current": {"name": "Wind Direction", "unit": "°", "icon": "mdi:compass-outline"},
     "rain_today": {"name": "Rain Today", "unit": "in", "icon": "mdi:weather-rainy"},
-    "solar_radiation_current": {"name": "Solar Radiation", "unit": "W/m²", "class": "illuminance"},
+    "solar_radiation_current": {"name": "Solar Radiation", "unit": "W/m²", "icon": "mdi:weather-sunny"},
     "leaf_wetness_current": {"name": "Leaf Wetness", "unit": "", "icon": "mdi:leaf"},
     "temp_1_current": {"name": "Probe Temperature 1", "unit": "°F", "class": "temperature"},
     "soil_moisture_current": {"name": "Soil Moisture", "unit": "cb (kPa)", "icon": "mdi:water-percent"},
