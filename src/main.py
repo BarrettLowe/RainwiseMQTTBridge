@@ -42,16 +42,15 @@ def main():
         discovery_published = False
         while True:
             # --- 1. Fetch and Parse Data ---
-            print("Fetching and parsing data...")
             raw_data = get_weather_data(RAINWISE_IP)
             if not raw_data:
-                print(f"Could not retrieve data. Retrying in {POLL_INTERVAL} seconds...")
+                print(f"[ERROR] Could not retrieve data. Retrying in {POLL_INTERVAL} seconds...")
                 time.sleep(POLL_INTERVAL)
                 continue
 
             sensors = parse_sensor_data(raw_data)
             if not sensors:
-                print(f"Failed to parse sensor data. Retrying in {POLL_INTERVAL} seconds...")
+                print(f"[ERROR] Failed to parse sensor data. Retrying in {POLL_INTERVAL} seconds...")
                 time.sleep(POLL_INTERVAL)
                 continue
             
@@ -65,11 +64,9 @@ def main():
                 print(f"Published {len(discovery_configs)} discovery messages.")
 
             # --- 3. Publish Data ---
-            print(f"Publishing sensor data to topic: {MQTT_STATE_TOPIC}")
             mqtt_client.publish(MQTT_STATE_TOPIC, sensors)
 
             # --- 4. Wait for next poll ---
-            print(f"Waiting for {POLL_INTERVAL} seconds...")
             time.sleep(POLL_INTERVAL)
 
     except KeyboardInterrupt:

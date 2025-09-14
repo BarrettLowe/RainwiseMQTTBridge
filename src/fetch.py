@@ -1,4 +1,5 @@
 import requests
+import json
 
 def get_weather_data(ip_address: str) -> dict | None:
     """
@@ -11,11 +12,13 @@ def get_weather_data(ip_address: str) -> dict | None:
         A dictionary containing the weather data, or None if an error occurs.
     """
     url = f"http://{ip_address}/weather.json"
-    print(f"Fetching data from {url}")
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()  # Raise an exception for bad status codes
         return response.json()
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching data from {url}: {e}")
+        print(f"[ERROR] Network error fetching data from {url}: {e}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"[ERROR] Failed to decode JSON response from {url}: {e}")
         return None
