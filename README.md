@@ -1,0 +1,1 @@
+This project parses the webpage from a local rainwise IP100 weather station to extract weather data and then posts that data to an MQTT broker for ingestion by HomeAssistant or other home automation systems.
