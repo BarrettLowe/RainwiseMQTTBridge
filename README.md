@@ -23,6 +23,7 @@ The application is configured entirely through environment variables. This is id
 | `MQTT_USERNAME` | (None) | The username for your MQTT broker (if any). |
 | `MQTT_PASSWORD` | (None) | The password for your MQTT broker (if any). |
 | `POLL_INTERVAL` | `60` | The number of seconds to wait between polling the weather station. |
+| `WIND_DIRECTION_OFFSET` | `0` | A positive or negative integer to offset the wind direction in degrees for calibration. |
 
 **Note:** While the script has some of these values set as defaults for testing, it is best practice to provide them explicitly as environment variables when you run the container.
 
@@ -49,8 +50,11 @@ docker run -d \
   -e MQTT_USERNAME="localDevices" \
   -e MQTT_PASSWORD="d0gf00d" \
   -e POLL_INTERVAL="60" \
+  -e WIND_DIRECTION_OFFSET="0" \
   --restart unless-stopped \
   rainwise-to-mqtt
 ```
 
 On Unraid, you would use the "Add Container" page, set the repository to `rainwise-to-mqtt`, and then add each of the environment variables from the example above using the "Add another Path, Port, Variable, Label or Device" button.
+
+```

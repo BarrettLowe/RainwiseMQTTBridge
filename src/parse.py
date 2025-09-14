@@ -2,7 +2,13 @@
 Parses the JSON data from the Rainwise IP-100 device.
 """
 
-def parse_sensor_data(data: dict, units: str = 'us') -> dict | None:
+def degrees_to_cardinal(d):
+    '''Converts degrees to a 16-point cardinal direction.'''
+    dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+    ix = round(d / (360. / len(dirs)))
+    return dirs[ix % len(dirs)]
+
+def parse_sensor_data(data: dict, units: str = 'us', wind_offset: int = 0) -> dict | None:
     """
     Extracts and flattens the current sensor readings from the raw JSON data.
     Other values are left as comments in the code for easy re-enabling.
@@ -10,6 +16,7 @@ def parse_sensor_data(data: dict, units: str = 'us') -> dict | None:
     Args:
         data: The raw dictionary parsed from the weather.json file.
         units: The unit system to use ('us' or 'metric'). Defaults to 'us'.
+        wind_offset: An offset to add to the wind direction for calibration.
 
     Returns:
         A dictionary of sensor values or None if the data is invalid.
@@ -58,7 +65,12 @@ def parse_sensor_data(data: dict, units: str = 'us') -> dict | None:
     wind_data = measurements.get('wnd', {})
     if wind_data:
         sensors['wind_speed_current'] = wind_data.get('wic')
-        sensors['wind_direction_current'] = wind_data.get('wict')
+        original_degrees = wind_data.get('wict')
+        if isinstance(original_degrees, (int, float)):
+            # Apply offset and wrap around 360 degrees
+            corrected_degrees = (original_degrees + wind_offset + 360) % 360
+            sensors['wind_direction_degrees'] = corrected_degrees
+            sensors['wind_direction_cardinal'] = degrees_to_cardinal(corrected_degrees)
         # sensors['wind_speed_average'] = wind_data.get('wia')
         # sensors['wind_speed_today_high'] = wind_data.get('wdh')
         # sensors['wind_direction_today_high'] = wind_data.get('wdht')

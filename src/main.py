@@ -14,6 +14,7 @@ MQTT_USERNAME = os.getenv("MQTT_USERNAME", "localDevices")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "d0gf00d")
 MQTT_STATE_TOPIC = "rainwise/station/state"
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", 60))  # seconds
+WIND_DIRECTION_OFFSET = int(os.getenv("WIND_DIRECTION_OFFSET", 0))
 
 # --- Home Assistant Device Info ---
 # This information will be used for all sensors to group them into a single device.
@@ -28,6 +29,8 @@ DEVICE_INFO = {
 def main():
     """Main application loop."""
     print("--- Starting Rainwise to MQTT Bridge ---")
+    if WIND_DIRECTION_OFFSET != 0:
+        print(f"Using wind direction offset of {WIND_DIRECTION_OFFSET} degrees.")
 
     # --- Connect to MQTT ---
     mqtt_client = MQTTClient(MQTT_BROKER, MQTT_PORT, username=MQTT_USERNAME, password=MQTT_PASSWORD)
@@ -48,7 +51,7 @@ def main():
                 time.sleep(POLL_INTERVAL)
                 continue
 
-            sensors = parse_sensor_data(raw_data)
+            sensors = parse_sensor_data(raw_data, wind_offset=WIND_DIRECTION_OFFSET)
             if not sensors:
                 print(f"[ERROR] Failed to parse sensor data. Retrying in {POLL_INTERVAL} seconds...")
                 time.sleep(POLL_INTERVAL)
