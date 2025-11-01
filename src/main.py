@@ -6,6 +6,9 @@ from parse import parse_sensor_data
 from mqtt import MQTTClient
 from ha_discovery import generate_discovery_configs
 
+# --- Version ---
+__version__ = "1.1.0"
+
 # --- Configuration ---
 RAINWISE_IP = os.getenv("RAINWISE_IP", "192.168.86.207")
 MQTT_BROKER = os.getenv("MQTT_BROKER", "192.168.86.33")
@@ -13,6 +16,7 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "localDevices")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "d0gf00d")
 MQTT_STATE_TOPIC = "rainwise/station/state"
+MQTT_AVAILABILITY_TOPIC = "rainwise/station/availability"
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", 60))  # seconds
 WIND_DIRECTION_OFFSET = int(os.getenv("WIND_DIRECTION_OFFSET", 0))
 
@@ -39,6 +43,9 @@ def main():
         return
     
     time.sleep(1)  # Give client time to establish connection
+    
+    # Publish initial availability as offline until we get data
+    mqtt_client.publish(MQTT_AVAILABILITY_TOPIC, "offline", retain=True)
 
     # --- Main Loop ---
     try:
@@ -57,17 +64,24 @@ def main():
                 time.sleep(POLL_INTERVAL)
                 continue
             
+            # Check if device has sensor data
+            availability = "online" if sensors.get('has_sensor_data', False) else "offline"
+            mqtt_client.publish(MQTT_AVAILABILITY_TOPIC, availability, retain=True)
+            print(f"[INFO] Device availability: {availability}")
+
             # --- 2. Publish HA Discovery (only on first successful run) ---
             if not discovery_published:
                 print("Publishing Home Assistant discovery messages...")
-                discovery_configs = generate_discovery_configs(sensors, MQTT_STATE_TOPIC, DEVICE_INFO)
+                discovery_configs = generate_discovery_configs(sensors, MQTT_STATE_TOPIC, DEVICE_INFO, MQTT_AVAILABILITY_TOPIC)
                 for topic, payload in discovery_configs:
                     mqtt_client.publish(topic, payload, retain=True)
                 discovery_published = True
                 print(f"Published {len(discovery_configs)} discovery messages.")
 
             # --- 3. Publish Data ---
-            mqtt_client.publish(MQTT_STATE_TOPIC, sensors)
+            # Remove internal flags before publishing
+            publish_data = {k: v for k, v in sensors.items() if k != 'has_sensor_data'}
+            mqtt_client.publish(MQTT_STATE_TOPIC, publish_data)
 
             # --- 4. Wait for next poll ---
             time.sleep(POLL_INTERVAL)

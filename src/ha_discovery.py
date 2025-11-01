@@ -19,7 +19,7 @@ SENSOR_METADATA = {
     "temp_inside_current": {"name": "Inside Temperature", "unit": "°F", "class": "temperature"},
 }
 
-def generate_discovery_configs(parsed_data: dict, state_topic: str, device_info: dict) -> list:
+def generate_discovery_configs(parsed_data: dict, state_topic: str, device_info: dict, availability_topic: str) -> list:
     """
     Generates a list of Home Assistant MQTT discovery configurations.
 
@@ -27,6 +27,7 @@ def generate_discovery_configs(parsed_data: dict, state_topic: str, device_info:
         parsed_data: The dictionary of parsed sensor data.
         state_topic: The MQTT topic where sensor state is published.
         device_info: The common device information dictionary.
+        availability_topic: The MQTT topic for device availability.
 
     Returns:
         A list of tuples, where each tuple is (discovery_topic, config_payload).
@@ -45,6 +46,9 @@ def generate_discovery_configs(parsed_data: dict, state_topic: str, device_info:
             "unique_id": sensor_id,
             "state_topic": state_topic,
             "value_template": f"{{{{ value_json.{key} }}}}",
+            "availability_topic": availability_topic,
+            "payload_available": "online",
+            "payload_not_available": "offline",
             "device": device_info,
         }
 

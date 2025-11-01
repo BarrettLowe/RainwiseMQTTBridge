@@ -1,6 +1,9 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim-bookworm
 
+# Set version label
+LABEL version="1.1.0"
+
 # Set the working directory in the container
 WORKDIR /app
 

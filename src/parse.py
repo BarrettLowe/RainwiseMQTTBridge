@@ -25,7 +25,24 @@ def parse_sensor_data(data: dict, units: str = 'us', wind_offset: int = 0) -> di
         return None
 
     measurements = data[units]
+    
+    # Check if this indicates no sensor data (all zeros and sentinel values)
+    # When no sensors are connected, all current values are 0, highs are -99999, lows are 99999
+    has_sensor_data = False
+    for family_key in ['atmp', 'rh', 'bp', 'wnd', 'rf', 'sr', 'sr2', 'uv', 'lw', 'tmp1', 'tmp2', 'sm', 'itmp']:
+        family_data = measurements.get(family_key, {})
+        if family_data:
+            # Check if any current value is non-zero
+            current_keys = [k for k in family_data.keys() if k.endswith('c') or k.endswith('ic') or k.endswith('ric') or k.endswith('bic') or k.endswith('t1ic') or k.endswith('t2ic') or k.endswith('sic') or k.endswith('itic')]
+            for key in current_keys:
+                if family_data.get(key, 0) != 0:
+                    has_sensor_data = True
+                    break
+        if has_sensor_data:
+            break
+    
     sensors = {}
+    sensors['has_sensor_data'] = has_sensor_data
 
     # --- Root level sensors ---
     sensors['timestamp'] = data.get('time')
