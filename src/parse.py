@@ -10,8 +10,8 @@ def degrees_to_cardinal(d):
 
 def parse_sensor_data(data: dict, units: str = 'us', wind_offset: int = 0) -> dict | None:
     """
-    Extracts and flattens the current sensor readings from the raw JSON data.
-    Other values are left as comments in the code for easy re-enabling.
+    Extracts and flattens all available sensor readings (current, average,
+    and today/5-minute extremes) from the raw JSON data.
 
     Args:
         data: The raw dictionary parsed from the weather.json file.
@@ -56,14 +56,14 @@ def parse_sensor_data(data: dict, units: str = 'us', wind_offset: int = 0) -> di
         if not family_data:
             return
         
-        # To add more values, uncomment the lines below
+        # Maps each family's raw field suffix to a human-readable name suffix
         key_map = {
             'ic': '_current', 'tic': '_current', 'ric': '_current', 'bic': '_current', 't1ic': '_current', 't2ic': '_current', 'sic': '_current', 'itic': '_current',
-            # 'ia': '_average', 'tia': '_average', 'ria': '_average', 'bia': '_average', 't1ia': '_average', 't2ia': '_average', 'sia': '_average', 'itia': '_average',
-            # 'dh': '_today_high', 'tdh': '_today_high', 'rdh': '_today_high', 'bdh': '_today_high', 't1dh': '_today_high', 't2dh': '_today_high', 'sdh': '_today_high', 'itdh': '_today_high',
-            # 'ih': '_5min_high', 'tih': '_5min_high', 'rih': '_5min_high', 'bih': '_5min_high', 't1ih': '_5min_high', 't2ih': '_5min_high', 'sih': '_5min_high', 'itih': '_5min_high',
-            # 'dl': '_today_low', 'tdl': '_today_low', 'rdl': '_today_low', 'bdl': '_today_low', 't1dl': '_today_low', 't2dl': '_today_low', 'sdl': '_today_low', 'itdl': '_today_low',
-            # 'il': '_5min_low', 'til': '_5min_low', 'ril': '_5min_low', 'bil': '_5min_low', 't1il': '_5min_low', 't2il': '_5min_low', 'sil': '_5min_low', 'itil': '_5min_low',
+            'ia': '_average', 'tia': '_average', 'ria': '_average', 'bia': '_average', 't1ia': '_average', 't2ia': '_average', 'sia': '_average', 'itia': '_average',
+            'dh': '_today_high', 'tdh': '_today_high', 'rdh': '_today_high', 'bdh': '_today_high', 't1dh': '_today_high', 't2dh': '_today_high', 'sdh': '_today_high', 'itdh': '_today_high',
+            'ih': '_5min_high', 'tih': '_5min_high', 'rih': '_5min_high', 'bih': '_5min_high', 't1ih': '_5min_high', 't2ih': '_5min_high', 'sih': '_5min_high', 'itih': '_5min_high',
+            'dl': '_today_low', 'tdl': '_today_low', 'rdl': '_today_low', 'bdl': '_today_low', 't1dl': '_today_low', 't2dl': '_today_low', 'sdl': '_today_low', 'itdl': '_today_low',
+            'il': '_5min_low', 'til': '_5min_low', 'ril': '_5min_low', 'bil': '_5min_low', 't1il': '_5min_low', 't2il': '_5min_low', 'sil': '_5min_low', 'itil': '_5min_low',
         }
         for key, suffix in key_map.items():
             if key in family_data:
@@ -81,52 +81,56 @@ def parse_sensor_data(data: dict, units: str = 'us', wind_offset: int = 0) -> di
     # --- Wind (special case) ---
     wind_data = measurements.get('wnd', {})
     if wind_data:
+        def _add_wind_direction(raw_degrees, prefix):
+            if not isinstance(raw_degrees, (int, float)):
+                return
+            # Apply calibration offset and wrap around 360 degrees
+            corrected = (raw_degrees + wind_offset + 360) % 360
+            sensors[f'{prefix}_degrees'] = corrected
+            sensors[f'{prefix}_cardinal'] = degrees_to_cardinal(corrected)
+
         sensors['wind_speed_current'] = wind_data.get('wic')
-        original_degrees = wind_data.get('wict')
-        if isinstance(original_degrees, (int, float)):
-            # Apply offset and wrap around 360 degrees
-            corrected_degrees = (original_degrees + wind_offset + 360) % 360
-            sensors['wind_direction_degrees'] = corrected_degrees
-            sensors['wind_direction_cardinal'] = degrees_to_cardinal(corrected_degrees)
-        # sensors['wind_speed_average'] = wind_data.get('wia')
-        # sensors['wind_speed_today_high'] = wind_data.get('wdh')
-        # sensors['wind_direction_today_high'] = wind_data.get('wdht')
-        # sensors['wind_speed_5min_high'] = wind_data.get('wih')
-        # sensors['wind_direction_5min_high'] = wind_data.get('wiht')
+        _add_wind_direction(wind_data.get('wict'), 'wind_direction')
+        sensors['wind_speed_average'] = wind_data.get('wia')
+        # wdh/wdht and wih/wiht are the peak gust speed+direction over today / the last 5 minutes
+        sensors['wind_gust_speed_today'] = wind_data.get('wdh')
+        _add_wind_direction(wind_data.get('wdht'), 'wind_gust_direction_today')
+        sensors['wind_gust_speed_5min'] = wind_data.get('wih')
+        _add_wind_direction(wind_data.get('wiht'), 'wind_gust_direction_5min')
 
     # --- Rainfall (special case) ---
     rain_data = measurements.get('rf', {})
     if rain_data:
-        sensors['rain_today'] = rain_data.get('rfd') # This is a total, not a current rate
-        # sensors['rain_5min'] = rain_data.get('rfm')
+        sensors['rain_today'] = rain_data.get('rfd')  # Total, not a current rate
+        sensors['rain_5min'] = rain_data.get('rfm')  # Total accumulated in the last 5 minutes
 
     # --- Solar Radiation (special case) ---
     solar_data = measurements.get('sr', {})
     if solar_data:
         sensors['solar_radiation_current'] = solar_data.get('src')
-        # sensors['solar_radiation_today'] = solar_data.get('srd')
-        # sensors['solar_radiation_5min'] = solar_data.get('srm')
-        
+        sensors['solar_radiation_today'] = solar_data.get('srd')
+        sensors['solar_radiation_5min'] = solar_data.get('srm')
+
     # --- Solar Radiation 2 (special case) ---
     solar2_data = measurements.get('sr2', {})
     if solar2_data:
         sensors['solar_radiation_2_current'] = solar2_data.get('sr2c')
-        # sensors['solar_radiation_2_today'] = solar2_data.get('sr2d')
-        # sensors['solar_radiation_2_5min'] = solar2_data.get('sr2m')
+        sensors['solar_radiation_2_today'] = solar2_data.get('sr2d')
+        sensors['solar_radiation_2_5min'] = solar2_data.get('sr2m')
 
     # --- UV (special case) ---
     uv_data = measurements.get('uv', {})
     if uv_data:
         sensors['uv_index_current'] = uv_data.get('uvc')
-        # sensors['uv_index_today'] = uv_data.get('uvd')
-        # sensors['uv_index_5min'] = uv_data.get('uvm')
+        sensors['uv_index_today'] = uv_data.get('uvd')
+        sensors['uv_index_5min'] = uv_data.get('uvm')
 
     # --- Leaf Wetness (special case) ---
     leaf_data = measurements.get('lw', {})
     if leaf_data:
         sensors['leaf_wetness_current'] = leaf_data.get('lwc')
-        # sensors['leaf_wetness_duration_today'] = leaf_data.get('lwd')
-        # sensors['leaf_wetness_duration_5min'] = leaf_data.get('lwm')
+        sensors['leaf_wetness_duration_today'] = leaf_data.get('lwd')
+        sensors['leaf_wetness_duration_5min'] = leaf_data.get('lwm')
 
     # Filter out any sensors that were not found (had a value of None)
     return {k: v for k, v in sensors.items() if v is not None}
